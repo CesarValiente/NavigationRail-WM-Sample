@@ -1,7 +1,6 @@
 package com.cesarvaliente.navigationrailsample
 
 import android.os.Bundle
-import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.NavController
 import androidx.navigation.findNavController
@@ -12,18 +11,16 @@ import androidx.window.FoldingFeature
 import androidx.window.WindowInfoRepo
 import androidx.window.WindowLayoutInfo
 import com.cesarvaliente.navigationrailsample.databinding.ActivityMainBinding
+import com.cesarvaliente.navigationrailsample.databinding.ActivityMainNavRailBinding
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.navigationrail.NavigationRailView
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-
-    private lateinit var binding: ActivityMainBinding
     private lateinit var windowInfoRepo: WindowInfoRepo
     private val scope = MainScope()
 
@@ -35,18 +32,23 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
         windowInfoRepo = WindowInfoRepo.create(this)
-
-        //Bind components
-        bottomNavView = binding.bottomNavView
-        navRailView = binding.navigationRail
-        navController = findNavController(R.id.nav_host_fragment_activity_main)
-
-        setupNavigation()
         adjustUI()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        scope.cancel()
+    }
+
+    private fun adjustUI() {
+        scope.launch {
+            windowInfoRepo.windowLayoutInfo
+                .collect { value ->
+                    showUI(value)
+                    setupNavigation()
+                }
+        }
     }
 
     private fun setupNavigation() {
@@ -60,31 +62,33 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
     }
 
-    private fun adjustUI() {
-        scope.launch {
-            windowInfoRepo.windowLayoutInfo
-                .collect { value -> showUI(value) }
-        }
-    }
-
     private fun showUI(windowLayoutInfo: WindowLayoutInfo) {
         if (windowLayoutInfo.displayFeatures.isEmpty()) {
-            bottomNavView.setupWithNavController(navController)
-            bottomNavView.visibility = View.VISIBLE
-            navRailView.visibility = View.GONE
+            showBottomNavigation()
         } else {
             (windowLayoutInfo.displayFeatures.component1() as? FoldingFeature)?.apply {
                 if (isSeparating) {
-                    navRailView.setupWithNavController(navController)
-                    navRailView.visibility = View.VISIBLE
-                    bottomNavView.visibility = View.GONE
+                    showNavigationRail()
                 }
             }
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        scope.cancel()
+    private fun showBottomNavigation() {
+        val binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        bottomNavView = binding.bottomNavView
+
+        navController = findNavController(R.id.nav_host_fragment_activity_main)
+        bottomNavView.setupWithNavController(navController)
+    }
+
+    private fun showNavigationRail() {
+        val binding = ActivityMainNavRailBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        navRailView = binding.navigationRail
+
+        navController = findNavController(R.id.nav_host_fragment_activity_main)
+        navRailView.setupWithNavController(navController)
     }
 }
