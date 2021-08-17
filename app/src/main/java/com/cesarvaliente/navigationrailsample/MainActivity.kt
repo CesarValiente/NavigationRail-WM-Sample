@@ -62,10 +62,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun adjustUI() {
         scope.launch {
-            val data = windowInfoRepo.windowLayoutInfo
-            data
-                .onEach { value -> showUI(value) }
-                .collect()
+            windowInfoRepo.windowLayoutInfo
+                .collect { value -> showUI(value) }
         }
     }
 
@@ -75,7 +73,7 @@ class MainActivity : AppCompatActivity() {
             bottomNavView.visibility = View.VISIBLE
             navRailView.visibility = View.GONE
         } else {
-            (windowLayoutInfo.displayFeatures.component1() as FoldingFeature).apply {
+            (windowLayoutInfo.displayFeatures.component1() as? FoldingFeature)?.apply {
                 if (isSeparating) {
                     navRailView.setupWithNavController(navController)
                     navRailView.visibility = View.VISIBLE
